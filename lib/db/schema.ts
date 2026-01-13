@@ -46,6 +46,24 @@ export const accounts = pgTable("accounts", {
   // The formatted display name in Google Workspace
   googleDisplayName: varchar("google_display_name", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+
+  // Profile Info
+  bio: text("bio"),
+  location: varchar("location", { length: 100 }),
+  profileImageUrl: varchar("profile_image_url", { length: 500 }),
+
+  // Professional Info (CB/Hero only)
+  company: varchar("company", { length: 100 }),
+  jobTitle: varchar("job_title", { length: 100 }),
+
+  // Social Networks
+  linkedin: varchar("linkedin", { length: 255 }),
+  twitter: varchar("twitter", { length: 255 }),
+  github: varchar("github", { length: 255 }),
+  instagram: varchar("instagram", { length: 255 }),
+  facebook: varchar("facebook", { length: 255 }),
+  youtube: varchar("youtube", { length: 255 }),
+  website: varchar("website", { length: 255 }),
 });
 
 // Audit logs

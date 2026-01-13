@@ -1,9 +1,15 @@
-import { auth, signIn } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { auth } from "@/lib/auth";
 import { UserMenu } from "@/components/user-menu";
-import { Mail, Users, GraduationCap, Award, Star } from "lucide-react";
+import {
+  GraduationCap,
+  Users,
+  Award,
+  Star,
+  ArrowRight,
+  Shield,
+  Zap,
+  Globe,
+} from "lucide-react";
 import Link from "next/link";
 
 const communityTypes = [
@@ -11,178 +17,343 @@ const communityTypes = [
     id: "cc",
     name: "AWS Cloud Club",
     description: "Student-led technical communities at educational institutions",
-    prefix: "cc.school",
     example: "cc.tec@awscommunity.mx",
     icon: GraduationCap,
+    color: "#c084fc",
   },
   {
     id: "ug",
     name: "AWS User Group",
-    description: "Local community groups for AWS enthusiasts in different cities",
-    prefix: "ug.city",
+    description: "Local community groups for AWS enthusiasts in cities",
     example: "ug.guadalajara@awscommunity.mx",
     icon: Users,
+    color: "#fbbf24",
   },
   {
     id: "cb",
     name: "Community Builder",
     description: "AWS Community Builders program members",
-    prefix: "cb.name",
     example: "cb.dvictoria@awscommunity.mx",
     icon: Award,
+    color: "#34d399",
   },
   {
     id: "hero",
     name: "AWS Hero",
-    description: "AWS Heroes recognized for their community contributions",
-    prefix: "hero.name",
+    description: "AWS Heroes recognized for their contributions",
     example: "hero.dvictoria@awscommunity.mx",
     icon: Star,
+    color: "#f472b6",
   },
 ];
+
+const steps = [
+  {
+    number: "01",
+    title: "Select target community",
+    description: "Choose your community type from Cloud Club, User Group, Community Builder, or Hero.",
+  },
+  {
+    number: "02",
+    title: "Verify membership",
+    description: "Enter the access token provided by your community leader to verify your membership.",
+  },
+  {
+    number: "03",
+    title: "Create your email",
+    description: "Pick your username and receive your @awscommunity.mx address instantly.",
+  },
+];
+
+const features = [
+  {
+    icon: Shield,
+    title: "Secure & Verified",
+    description: "Token-based verification ensures only legitimate community members get access.",
+  },
+  {
+    icon: Zap,
+    title: "Instant Setup",
+    description: "Your email is ready to use immediately after verification.",
+  },
+  {
+    icon: Globe,
+    title: "Google Workspace",
+    description: "Full access to Gmail, Drive, Calendar, and all Google Workspace apps.",
+  },
+];
+
+// Pixel graphic composition inspired by AWS Builder Center
+function PixelGraphic() {
+  return (
+    <div className="relative w-[340px] h-[280px]">
+      {/* Main composition - staggered diagonal */}
+      <div className="absolute top-0 right-0 flex flex-col gap-1">
+        {/* Row 1 */}
+        <div className="flex gap-1 justify-end">
+          <div className="w-11 h-11 rounded-[3px] bg-[#22d3ee]" />
+          <div className="w-11 h-11 rounded-[3px] bg-[#67e8f9]/70" />
+        </div>
+        {/* Row 2 */}
+        <div className="flex gap-1 justify-end pr-12">
+          <div className="w-11 h-11 rounded-[3px] bg-[#c084fc]" />
+          <div className="w-11 h-11 rounded-[3px] bg-[#d8b4fe]/80" />
+          <div className="w-11 h-11 rounded-[3px] bg-[#67e8f9]/40" />
+        </div>
+        {/* Row 3 */}
+        <div className="flex gap-1 justify-end pr-24">
+          <div className="w-11 h-11 rounded-[3px] bg-[#a855f7]/60" />
+          <div className="w-11 h-11 rounded-[3px] bg-[#f472b6]" />
+          <div className="w-11 h-11 rounded-[3px] bg-[#f9a8d4]/70" />
+        </div>
+        {/* Row 4 */}
+        <div className="flex gap-1 justify-end pr-36">
+          <div className="w-11 h-11 rounded-[3px] bg-[#f472b6]/70" />
+          <div className="w-11 h-11 rounded-[3px] bg-[#fb923c]" />
+          <div className="w-11 h-11 rounded-[3px] bg-[#fbbf24]/60" />
+        </div>
+        {/* Row 5 */}
+        <div className="flex gap-1 justify-end pr-48">
+          <div className="w-11 h-11 rounded-[3px] bg-[#4ade80]/60" />
+          <div className="w-11 h-11 rounded-[3px] bg-[#34d399]" />
+          <div className="w-11 h-11 rounded-[3px] bg-[#fbbf24]/80" />
+        </div>
+      </div>
+
+      {/* Floating accent blocks */}
+      <div className="absolute top-2 left-8 w-3 h-3 rounded-[2px] bg-[#34d399] animate-pulse" />
+      <div className="absolute bottom-16 right-4 w-2 h-2 rounded-[1px] bg-[#c084fc]/60" />
+    </div>
+  );
+}
+
+// Small decorative pixel cluster for cards
+function MiniPixels({ colors }: { colors: string[] }) {
+  return (
+    <div className="grid grid-cols-3 gap-0.5">
+      {[...Array(9)].map((_, i) => (
+        <div
+          key={i}
+          className="w-2 h-2 rounded-[1px]"
+          style={{
+            backgroundColor: i < colors.length ? colors[i] : "transparent",
+            opacity: i < colors.length ? 0.6 + Math.random() * 0.4 : 0,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default async function HomePage() {
   const session = await auth();
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#0a0a0f]">
       {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Mail className="h-6 w-6 text-orange-500" />
-            <span className="font-semibold text-lg">AWS Community MX</span>
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/90 backdrop-blur-md border-b border-[#2d2d3a]">
+        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded bg-[#00d4aa] flex items-center justify-center">
+              <span className="text-[#0a0a0f] font-heading font-semibold text-sm">MX</span>
+            </div>
+            <span className="font-heading text-[#e6edf3] text-sm">AWS Community</span>
+          </Link>
+
+          <div className="flex items-center gap-4">
+            <UserMenu user={session?.user ?? null} />
           </div>
-          <UserMenu user={session?.user ?? null} />
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-4">
-        <div className="container mx-auto text-center max-w-3xl">
-          <Badge variant="secondary" className="mb-4">
-            AWS Community Mexico
-          </Badge>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-            Get Your @awscommunity.mx Email
-          </h1>
-          <p className="text-xl text-muted-foreground mb-8">
-            As a member of the AWS community in Mexico, you can create your own
-            professional email address to represent your community activities.
-          </p>
-          {session ? (
-            <Button size="lg" asChild>
-              <Link href="/register">
-                <Mail className="mr-2 h-5 w-5" />
-                Create Your Email
-              </Link>
-            </Button>
-          ) : (
-            <form
-              action={async () => {
-                "use server";
-                await signIn("google", { redirectTo: "/register" });
-              }}
-            >
-              <Button size="lg" type="submit">
-                Sign in with Google to Continue
-              </Button>
-            </form>
-          )}
+      <section className="relative min-h-[85vh] flex items-center gradient-hero pt-14">
+        <div className="max-w-7xl mx-auto px-6 py-20 w-full">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            {/* Left content */}
+            <div className="max-w-lg">
+              <h1 className="font-heading text-[#e6edf3] text-4xl md:text-5xl leading-tight mb-6 animate-fade-in-up">
+                Your ideas.
+                <br />
+                Your community.
+                <br />
+                Your AWS.
+              </h1>
+
+              <p className="text-[#7d8590] text-lg leading-relaxed mb-8 animate-fade-in-up delay-100">
+                Connect with builders who understand your journey. Get your professional @awscommunity.mx email address and represent the AWS community in Mexico.
+              </p>
+
+              <div className="flex items-center gap-4 animate-fade-in-up delay-200">
+                <Link
+                  href="/register"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-[#00d4aa] text-[#0a0a0f] text-sm font-semibold hover:bg-[#00c49a] transition-all hover:shadow-[0_0_20px_rgba(0,212,170,0.4)]"
+                >
+                  Join the community
+                </Link>
+                <Link
+                  href="#community-types"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md border border-[#3d3d4a] text-[#e6edf3] text-sm font-medium hover:border-[#e6edf3] hover:bg-[#e6edf3]/5 transition-all"
+                >
+                  Learn more
+                </Link>
+              </div>
+            </div>
+
+            {/* Right - Pixel graphic */}
+            <div className="hidden lg:flex justify-center">
+              <PixelGraphic />
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Community Types */}
-      <section className="py-16 px-4 bg-muted/50">
-        <div className="container mx-auto">
-          <h2 className="text-2xl font-bold text-center mb-8">
-            Email Formats by Community Type
-          </h2>
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            {communityTypes.map((type) => (
-              <Card key={type.id}>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-orange-100 text-orange-600">
-                      <type.icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{type.name}</CardTitle>
-                      <CardDescription>{type.description}</CardDescription>
-                    </div>
+      <section id="community-types" className="py-20 px-6 bg-[#0a0a0f]">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-10">
+            <h2 className="font-heading text-[#e6edf3] text-2xl">Community Types</h2>
+            <div className="flex gap-2">
+              <button className="w-9 h-9 flex items-center justify-center border border-[#2d2d3a] rounded-md text-[#7d8590] hover:text-[#e6edf3] hover:border-[#e6edf3] transition-colors">
+                <ArrowRight className="w-4 h-4 rotate-180" />
+              </button>
+              <button className="w-9 h-9 flex items-center justify-center border border-[#2d2d3a] rounded-md text-[#7d8590] hover:text-[#e6edf3] hover:border-[#e6edf3] transition-colors">
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {communityTypes.map((type, index) => (
+              <Link
+                key={type.id}
+                href="/register"
+                className="group relative p-5 rounded-lg bg-[#12121a] border border-[#2d2d3a] hover:border-[#3d3d4a] transition-all animate-fade-in-up"
+                style={{ animationDelay: `${index * 75}ms` }}
+              >
+                {/* Top accent bar */}
+                <div
+                  className="absolute top-0 left-4 right-4 h-[2px] rounded-b-full"
+                  style={{ backgroundColor: type.color }}
+                />
+
+                <div className="pt-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center mb-4"
+                    style={{ backgroundColor: `${type.color}15` }}
+                  >
+                    <type.icon className="w-5 h-5" style={{ color: type.color }} />
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-muted rounded-lg p-3 font-mono text-sm">
+
+                  <h3 className="text-[#e6edf3] font-medium mb-2">{type.name}</h3>
+                  <p className="text-[#7d8590] text-sm mb-4 line-clamp-2">{type.description}</p>
+
+                  <div className="font-mono text-xs text-[#7d8590] bg-[#0a0a0f] rounded px-2.5 py-1.5 border border-[#2d2d3a]">
                     {type.example}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+
+                {/* Hover arrow */}
+                <div className="absolute bottom-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ArrowRight className="w-4 h-4 text-[#7d8590]" />
+                </div>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
       {/* How it Works */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto max-w-3xl">
-          <h2 className="text-2xl font-bold text-center mb-8">How It Works</h2>
-          <div className="space-y-6">
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold">
-                1
+      <section className="py-20 px-6 bg-[#0a0a0f] border-t border-[#2d2d3a]">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="font-heading text-[#e6edf3] text-2xl mb-10">
+            Easily plan and validate
+          </h2>
+
+          <div className="grid md:grid-cols-3 gap-5">
+            {steps.map((step, index) => (
+              <div
+                key={step.number}
+                className="relative p-6 rounded-lg bg-[#12121a] border border-[#2d2d3a] animate-fade-in-up"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                {/* Decorative pixels */}
+                <div className="absolute top-4 right-4">
+                  <MiniPixels
+                    colors={
+                      index === 0
+                        ? ["#c084fc", "#c084fc", "", "#f472b6", "#f472b6", "", "", "#34d399", ""]
+                        : index === 1
+                        ? ["#22d3ee", "#22d3ee", "", "#c084fc", "#c084fc", "", "", "#fbbf24", ""]
+                        : ["#34d399", "#34d399", "", "#fbbf24", "#fbbf24", "", "", "#f472b6", ""]
+                    }
+                  />
+                </div>
+
+                {/* Step number */}
+                <div className="flex items-center justify-center h-24 mb-4">
+                  <span className="font-heading text-6xl text-[#2d2d3a] select-none">{step.number}</span>
+                </div>
+
+                <p className="text-xs text-[#7d8590] uppercase tracking-wider mb-1.5">Step {index + 1}</p>
+                <h3 className="text-[#e6edf3] font-medium mb-2">{step.title}</h3>
+                <p className="text-[#7d8590] text-sm leading-relaxed">{step.description}</p>
               </div>
-              <div>
-                <h3 className="font-semibold">Sign in with Google</h3>
-                <p className="text-muted-foreground">
-                  Use your existing Google account to authenticate and link your identity.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold">
-                2
-              </div>
-              <div>
-                <h3 className="font-semibold">Select Your Community Type</h3>
-                <p className="text-muted-foreground">
-                  Choose whether you&apos;re a Cloud Club, User Group, Community Builder, or Hero.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold">
-                3
-              </div>
-              <div>
-                <h3 className="font-semibold">Enter Your Access Token</h3>
-                <p className="text-muted-foreground">
-                  Use the token provided by your community leader to verify your membership.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold">
-                4
-              </div>
-              <div>
-                <h3 className="font-semibold">Choose Your Username</h3>
-                <p className="text-muted-foreground">
-                  Pick your email username and get your @awscommunity.mx address instantly.
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t py-8 px-4">
-        <div className="container mx-auto text-center text-sm text-muted-foreground">
-          <p>AWS Community Mexico Email Portal</p>
-          <p className="mt-1">
-            AWS and related marks are trademarks of Amazon.com, Inc.
+      {/* Features */}
+      <section className="py-20 px-6 bg-[#0a0a0f] border-t border-[#2d2d3a]">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-5">
+            {features.map((feature, index) => (
+              <div
+                key={feature.title}
+                className="p-6 rounded-lg bg-[#12121a] border border-[#2d2d3a] animate-fade-in-up"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="w-10 h-10 rounded-lg bg-[#00d4aa]/10 flex items-center justify-center mb-4">
+                  <feature.icon className="w-5 h-5 text-[#00d4aa]" />
+                </div>
+                <h3 className="text-[#e6edf3] font-medium mb-2">{feature.title}</h3>
+                <p className="text-[#7d8590] text-sm leading-relaxed">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-20 px-6 bg-[#0a0a0f] border-t border-[#2d2d3a]">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="font-heading text-[#e6edf3] text-2xl mb-4">
+            Ready to Get Started?
+          </h2>
+          <p className="text-[#7d8590] mb-8">
+            Create your @awscommunity.mx email address today and represent your community.
           </p>
+          <Link
+            href="/register"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-[#00d4aa] text-[#0a0a0f] text-sm font-semibold hover:bg-[#00c49a] transition-all hover:shadow-[0_0_20px_rgba(0,212,170,0.4)]"
+          >
+            Create Your Email
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-8 px-6 bg-[#0a0a0f] border-t border-[#2d2d3a]">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-6 h-6 rounded bg-[#00d4aa] flex items-center justify-center">
+              <span className="text-[#0a0a0f] font-heading font-semibold text-[10px]">MX</span>
+            </div>
+            <span className="font-heading text-[#e6edf3] text-sm">AWS Community MX</span>
+          </div>
+          <p className="text-[#7d8590] text-sm">AWS Community Mexico Email Portal</p>
         </div>
       </footer>
     </div>

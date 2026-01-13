@@ -8,6 +8,13 @@
       "when": 1768342315852,
       "tag": "0000_thankful_cobalt_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1768348244974,
+      "tag": "0001_strange_captain_britain",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,19 @@ const communityGroups: Record<string, string> = {
   hero: "heroes@awscommunity.mx",
 };
 
+// Organizational Unit paths for each community type
+const organizationalUnits: Record<string, string> = {
+  cc: "/Asociación Mexicana para la Innovación y Gestión de Oportunidades, A.C./AWS Community México/AWS Cloud Clubs",
+  ug: "/Asociación Mexicana para la Innovación y Gestión de Oportunidades, A.C./AWS Community México/AWS User Groups",
+  cb: "/Asociación Mexicana para la Innovación y Gestión de Oportunidades, A.C./AWS Community México/AWS Community Builders",
+  hero: "/Asociación Mexicana para la Innovación y Gestión de Oportunidades, A.C./AWS Community México/AWS Heroes",
+};
+
+// Get organizational unit path for a community type
+export function getOrganizationalUnit(communityType: string): string | null {
+  return organizationalUnits[communityType] || null;
+}
+
 // Format Google Workspace name based on community type
 // CC: "AWS Cloud Club at {name}" + "(México)"
 // UG: "AWS User Group {name}" + "(México)"
@@ -135,7 +148,8 @@ export function getGroupEmail(communityType: string): string | null {
 export async function createGoogleWorkspaceUser(
   email: string,
   firstName: string,
-  lastName: string
+  lastName: string,
+  orgUnitPath?: string
 ): Promise<{ success: boolean; tempPassword?: string; error?: string }> {
   try {
     const admin = await getAdminClient();
@@ -151,6 +165,7 @@ export async function createGoogleWorkspaceUser(
         },
         password: tempPassword,
         changePasswordAtNextLogin: true,
+        orgUnitPath: orgUnitPath || "/",
       },
     });
 
@@ -178,6 +193,99 @@ export async function checkGoogleWorkspaceUserExists(email: string): Promise<boo
     return true;
   } catch {
     return false;
+  }
+}
+
+// Delete a user from Google Workspace
+export async function deleteGoogleWorkspaceUser(
+  email: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const admin = await getAdminClient();
+    await admin.users.delete({ userKey: email });
+    return { success: true };
+  } catch (error: unknown) {
+    console.error("Error deleting Google Workspace user:", error);
+
+    // Handle specific errors
+    if (error && typeof error === "object" && "code" in error) {
+      const googleError = error as { code: number; message?: string };
+      if (googleError.code === 404) {
+        // User doesn't exist in Workspace - consider success for cleanup
+        return { success: true };
+      }
+    }
+
+    return { success: false, error: "Failed to delete user from Google Workspace" };
+  }
+}
+
+// Upload a profile photo to Google Workspace
+export async function uploadGoogleWorkspaceUserPhoto(
+  email: string,
+  imageBase64: string
+): Promise<{ success: boolean; photoUrl?: string; error?: string }> {
+  try {
+    const admin = await getAdminClient();
+
+    // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+    const base64Data = imageBase64.includes(",")
+      ? imageBase64.split(",")[1]
+      : imageBase64;
+
+    // Upload the photo
+    await admin.users.photos.update({
+      userKey: email,
+      requestBody: {
+        photoData: base64Data,
+        mimeType: "image/jpeg",
+      },
+    });
+
+    // The photo URL follows a predictable pattern in Google Workspace
+    const photoUrl = `https://www.google.com/a/awscommunity.mx/photo.gif?uid=${email}`;
+
+    return { success: true, photoUrl };
+  } catch (error: unknown) {
+    console.error("Error uploading Google Workspace user photo:", error);
+
+    if (error && typeof error === "object" && "code" in error) {
+      const googleError = error as { code: number; message?: string };
+      if (googleError.code === 404) {
+        return { success: false, error: "User not found in Google Workspace" };
+      }
+    }
+
+    return { success: false, error: "Failed to upload profile photo" };
+  }
+}
+
+// Get a user's profile photo URL from Google Workspace
+export async function getGoogleWorkspaceUserPhoto(
+  email: string
+): Promise<{ success: boolean; photoUrl?: string; error?: string }> {
+  try {
+    const admin = await getAdminClient();
+    const response = await admin.users.photos.get({ userKey: email });
+
+    if (response.data && response.data.photoData) {
+      // Return the photo as a data URL
+      const photoUrl = `data:${response.data.mimeType || "image/jpeg"};base64,${response.data.photoData}`;
+      return { success: true, photoUrl };
+    }
+
+    return { success: false, error: "No photo found" };
+  } catch (error: unknown) {
+    console.error("Error getting Google Workspace user photo:", error);
+
+    if (error && typeof error === "object" && "code" in error) {
+      const googleError = error as { code: number };
+      if (googleError.code === 404) {
+        return { success: false, error: "No photo found" };
+      }
+    }
+
+    return { success: false, error: "Failed to get profile photo" };
   }
 }
 

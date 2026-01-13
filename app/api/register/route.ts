@@ -9,6 +9,8 @@ import {
   addUserToGroup,
   getGroupEmail,
   formatGoogleWorkspaceName,
+  getOrganizationalUnit,
+  uploadGoogleWorkspaceUserPhoto,
 } from "@/lib/google-admin";
 
 const EMAIL_DOMAIN = process.env.EMAIL_DOMAIN || "awscommunity.mx";
@@ -16,7 +18,29 @@ const EMAIL_DOMAIN = process.env.EMAIL_DOMAIN || "awscommunity.mx";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { type, username, token, firstName, lastName, phone, alternativeEmail } = body;
+    const {
+      type,
+      username,
+      token,
+      firstName,
+      lastName,
+      phone,
+      alternativeEmail,
+      // Profile fields
+      bio,
+      location,
+      company,
+      jobTitle,
+      profileImage,
+      // Social networks
+      linkedin,
+      twitter,
+      github,
+      instagram,
+      facebook,
+      youtube,
+      website,
+    } = body;
     const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip");
 
     // Validate input
@@ -111,8 +135,11 @@ export async function POST(request: NextRequest) {
       lastName
     );
 
-    // Create user in Google Workspace
-    const result = await createGoogleWorkspaceUser(fullEmail, givenName, familyName);
+    // Get the organizational unit path for this community type
+    const orgUnitPath = getOrganizationalUnit(type);
+
+    // Create user in Google Workspace with organizational unit
+    const result = await createGoogleWorkspaceUser(fullEmail, givenName, familyName, orgUnitPath || undefined);
 
     if (!result.success) {
       await db.insert(auditLogs).values({
@@ -135,6 +162,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Upload profile image to Google Workspace if provided
+    let profileImageUrl: string | null = null;
+    if (profileImage) {
+      const photoResult = await uploadGoogleWorkspaceUserPhoto(fullEmail, profileImage);
+      if (photoResult.success && photoResult.photoUrl) {
+        profileImageUrl = photoResult.photoUrl;
+      } else {
+        console.error(`Failed to upload profile photo for ${fullEmail}`);
+      }
+    }
+
     // Save to our database
     await db.insert(accounts).values({
       email: fullEmail,
@@ -145,13 +183,27 @@ export async function POST(request: NextRequest) {
       phone: phone || null,
       alternativeEmail,
       googleDisplayName: displayName,
+      // Profile fields
+      bio: bio || null,
+      location: location || null,
+      company: company || null,
+      jobTitle: jobTitle || null,
+      profileImageUrl,
+      // Social networks
+      linkedin: linkedin || null,
+      twitter: twitter || null,
+      github: github || null,
+      instagram: instagram || null,
+      facebook: facebook || null,
+      youtube: youtube || null,
+      website: website || null,
     });
 
     // Log success
     await db.insert(auditLogs).values({
       action: "registration_success",
       actorEmail: alternativeEmail,
-      details: { type, username, fullEmail, addedToGroup, groupEmail, displayName },
+      details: { type, username, fullEmail, addedToGroup, groupEmail, displayName, orgUnitPath },
       ipAddress,
     });
 
