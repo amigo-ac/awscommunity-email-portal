@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { type CommunityType } from "@/lib/db";
 
 // Group email addresses for each community type
 const communityGroups: Record<string, string> = {
@@ -7,6 +8,50 @@ const communityGroups: Record<string, string> = {
   cb: "communitybuilders@awscommunity.mx",
   hero: "heroes@awscommunity.mx",
 };
+
+// Format Google Workspace name based on community type
+// CC: "AWS Cloud Club at {name}" + "(México)"
+// UG: "AWS User Group {name}" + "(México)"
+// CB: "{FirstName}" + "{LastName} (Community Builder)"
+// Hero: "{FirstName}" + "{LastName} (AWS Hero)"
+export function formatGoogleWorkspaceName(
+  type: CommunityType,
+  firstName: string,
+  lastName?: string
+): { givenName: string; familyName: string; displayName: string } {
+  switch (type) {
+    case "cc":
+      return {
+        givenName: `AWS Cloud Club at ${firstName}`,
+        familyName: "(México)",
+        displayName: `AWS Cloud Club at ${firstName} (México)`,
+      };
+    case "ug":
+      return {
+        givenName: `AWS User Group ${firstName}`,
+        familyName: "(México)",
+        displayName: `AWS User Group ${firstName} (México)`,
+      };
+    case "cb":
+      return {
+        givenName: firstName,
+        familyName: `${lastName} (Community Builder)`,
+        displayName: `${firstName} ${lastName} (Community Builder)`,
+      };
+    case "hero":
+      return {
+        givenName: firstName,
+        familyName: `${lastName} (AWS Hero)`,
+        displayName: `${firstName} ${lastName} (AWS Hero)`,
+      };
+    default:
+      return {
+        givenName: firstName,
+        familyName: lastName || "",
+        displayName: `${firstName} ${lastName || ""}`.trim(),
+      };
+  }
+}
 
 // Generate a random password
 export function generateTempPassword(length = 16): string {

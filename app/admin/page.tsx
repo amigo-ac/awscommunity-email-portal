@@ -92,7 +92,7 @@ export default async function AdminDashboard() {
                     <div>
                       <p className="font-mono text-sm">{account.email}</p>
                       <p className="text-xs text-muted-foreground">
-                        by {account.creatorGmail}
+                        {account.firstName} - {account.alternativeEmail}
                       </p>
                     </div>
                     <Badge variant="outline">{account.type.toUpperCase()}</Badge>

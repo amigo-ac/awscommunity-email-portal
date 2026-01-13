@@ -1,17 +1,8 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import { UserMenu } from "@/components/user-menu";
 import { RegistrationWizard } from "@/components/registration-wizard";
 import { Mail } from "lucide-react";
 import Link from "next/link";
 
-export default async function RegisterPage() {
-  const session = await auth();
-
-  if (!session?.user?.email) {
-    redirect("/");
-  }
-
+export default function RegisterPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -21,13 +12,12 @@ export default async function RegisterPage() {
             <Mail className="h-6 w-6 text-orange-500" />
             <span className="font-semibold text-lg">AWS Community MX</span>
           </Link>
-          <UserMenu user={session.user} />
         </div>
       </header>
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12">
-        <RegistrationWizard userEmail={session.user.email} />
+        <RegistrationWizard />
       </main>
     </div>
   );

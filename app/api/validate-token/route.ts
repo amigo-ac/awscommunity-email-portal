@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { db, tokens, auditLogs, communityTypes } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
     const { type, token } = body;
+    const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip");
 
     // Validate input
     if (!type || !token) {
@@ -34,9 +29,9 @@ export async function POST(request: NextRequest) {
       // Log failed attempt
       await db.insert(auditLogs).values({
         action: "token_validation_failed",
-        actorEmail: session.user.email,
+        actorEmail: "anonymous",
         details: { type, reason: "no_token_configured" },
-        ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+        ipAddress,
       });
       return NextResponse.json({ valid: false });
     }
@@ -47,9 +42,9 @@ export async function POST(request: NextRequest) {
     // Log the attempt
     await db.insert(auditLogs).values({
       action: isValid ? "token_validation_success" : "token_validation_failed",
-      actorEmail: session.user.email,
+      actorEmail: "anonymous",
       details: { type },
-      ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip"),
+      ipAddress,
     });
 
     return NextResponse.json({ valid: isValid });

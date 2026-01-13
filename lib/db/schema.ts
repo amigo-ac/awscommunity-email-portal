@@ -35,7 +35,16 @@ export const accounts = pgTable("accounts", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   type: varchar("type", { length: 20 }).notNull(),
   username: varchar("username", { length: 100 }).notNull(),
-  creatorGmail: varchar("creator_gmail", { length: 255 }).notNull(),
+  // For CB/Hero: person's first name. For CC/UG: organization/school/city name
+  firstName: varchar("first_name", { length: 100 }).notNull(),
+  // For CB/Hero: person's last name. For CC/UG: contact person name
+  lastName: varchar("last_name", { length: 100 }),
+  // Contact phone number
+  phone: varchar("phone", { length: 20 }),
+  // Alternative/contact email (required for all)
+  alternativeEmail: varchar("alternative_email", { length: 255 }).notNull(),
+  // The formatted display name in Google Workspace
+  googleDisplayName: varchar("google_display_name", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

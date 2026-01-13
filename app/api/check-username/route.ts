@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { db, accounts, emailPrefixes, communityTypes, type CommunityType } from "@/lib/db";
 import { eq } from "drizzle-orm";
 
@@ -7,11 +6,6 @@ const EMAIL_DOMAIN = process.env.EMAIL_DOMAIN || "awscommunity.mx";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
     const { type, username } = body;
 

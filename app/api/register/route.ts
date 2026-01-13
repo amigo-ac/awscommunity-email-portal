@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { db, tokens, accounts, auditLogs, emailPrefixes, communityTypes, type CommunityType } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -9,24 +8,25 @@ import {
   sendConfirmationEmail,
   addUserToGroup,
   getGroupEmail,
+  formatGoogleWorkspaceName,
 } from "@/lib/google-admin";
 
 const EMAIL_DOMAIN = process.env.EMAIL_DOMAIN || "awscommunity.mx";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
-    const { type, username, token } = body;
+    const { type, username, token, firstName, lastName, phone, alternativeEmail } = body;
     const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip");
 
     // Validate input
-    if (!type || !username || !token) {
+    if (!type || !username || !token || !firstName || !alternativeEmail) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // For CB and Hero, lastName is required
+    if ((type === "cb" || type === "hero") && !lastName) {
+      return NextResponse.json({ error: "Last name is required for this community type" }, { status: 400 });
     }
 
     if (!communityTypes.includes(type)) {
@@ -36,6 +36,11 @@ export async function POST(request: NextRequest) {
     // Validate username format
     if (!/^[a-z0-9]+$/.test(username) || username.length < 2) {
       return NextResponse.json({ error: "Invalid username format" }, { status: 400 });
+    }
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(alternativeEmail)) {
+      return NextResponse.json({ error: "Invalid alternative email format" }, { status: 400 });
     }
 
     // Verify token again
@@ -48,7 +53,7 @@ export async function POST(request: NextRequest) {
     if (!storedToken.length) {
       await db.insert(auditLogs).values({
         action: "registration_failed",
-        actorEmail: session.user.email,
+        actorEmail: alternativeEmail,
         details: { type, username, reason: "no_token_configured" },
         ipAddress,
       });
@@ -59,7 +64,7 @@ export async function POST(request: NextRequest) {
     if (!isTokenValid) {
       await db.insert(auditLogs).values({
         action: "registration_failed",
-        actorEmail: session.user.email,
+        actorEmail: alternativeEmail,
         details: { type, username, reason: "invalid_token" },
         ipAddress,
       });
@@ -80,7 +85,7 @@ export async function POST(request: NextRequest) {
     if (existingAccount.length > 0) {
       await db.insert(auditLogs).values({
         action: "registration_failed",
-        actorEmail: session.user.email,
+        actorEmail: alternativeEmail,
         details: { type, username, fullEmail, reason: "email_exists_in_db" },
         ipAddress,
       });
@@ -92,25 +97,27 @@ export async function POST(request: NextRequest) {
     if (existsInWorkspace) {
       await db.insert(auditLogs).values({
         action: "registration_failed",
-        actorEmail: session.user.email,
+        actorEmail: alternativeEmail,
         details: { type, username, fullEmail, reason: "email_exists_in_workspace" },
         ipAddress,
       });
       return NextResponse.json({ error: "Email already exists in workspace" }, { status: 400 });
     }
 
-    // Create user in Google Workspace
-    // Use username as both first and last name (user can update in Google settings)
-    const result = await createGoogleWorkspaceUser(
-      fullEmail,
-      username, // firstName
-      type.toUpperCase() // lastName (e.g., "CC", "UG", "CB", "HERO")
+    // Format the Google Workspace display name based on community type
+    const { givenName, familyName, displayName } = formatGoogleWorkspaceName(
+      type as CommunityType,
+      firstName,
+      lastName
     );
+
+    // Create user in Google Workspace
+    const result = await createGoogleWorkspaceUser(fullEmail, givenName, familyName);
 
     if (!result.success) {
       await db.insert(auditLogs).values({
         action: "registration_failed",
-        actorEmail: session.user.email,
+        actorEmail: alternativeEmail,
         details: { type, username, fullEmail, reason: "workspace_creation_failed", error: result.error },
         ipAddress,
       });
@@ -133,19 +140,23 @@ export async function POST(request: NextRequest) {
       email: fullEmail,
       type,
       username,
-      creatorGmail: session.user.email,
+      firstName,
+      lastName: lastName || "",
+      phone: phone || null,
+      alternativeEmail,
+      googleDisplayName: displayName,
     });
 
     // Log success
     await db.insert(auditLogs).values({
       action: "registration_success",
-      actorEmail: session.user.email,
-      details: { type, username, fullEmail, addedToGroup, groupEmail },
+      actorEmail: alternativeEmail,
+      details: { type, username, fullEmail, addedToGroup, groupEmail, displayName },
       ipAddress,
     });
 
-    // Send confirmation email (don't fail if this fails)
-    await sendConfirmationEmail(session.user.email, fullEmail, result.tempPassword!);
+    // Send confirmation email to the alternative email (don't fail if this fails)
+    await sendConfirmationEmail(alternativeEmail, fullEmail, result.tempPassword!);
 
     return NextResponse.json({
       success: true,

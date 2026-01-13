@@ -27,12 +27,16 @@ interface Account {
   email: string;
   type: string;
   username: string;
-  creatorGmail: string;
+  firstName: string;
+  lastName: string | null;
+  phone: string | null;
+  alternativeEmail: string;
+  googleDisplayName: string | null;
   createdAt: string;
 }
 
 const communityTypes = [
-  { value: "", label: "All Types" },
+  { value: "all", label: "All Types" },
   { value: "cc", label: "Cloud Club" },
   { value: "ug", label: "User Group" },
   { value: "cb", label: "Community Builder" },
@@ -43,7 +47,7 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [type, setType] = useState("");
+  const [type, setType] = useState("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -53,7 +57,7 @@ export default function AccountsPage() {
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
-      if (type) params.set("type", type);
+      if (type && type !== "all") params.set("type", type);
       params.set("page", page.toString());
 
       const res = await fetch(`/api/admin/accounts?${params}`);
@@ -134,7 +138,8 @@ export default function AccountsPage() {
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Created By</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Contact Email</TableHead>
                   <TableHead>Created At</TableHead>
                 </TableRow>
               </TableHeader>
@@ -146,7 +151,10 @@ export default function AccountsPage() {
                       <Badge variant="outline">{account.type.toUpperCase()}</Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {account.creatorGmail}
+                      {account.firstName} {account.lastName && `(${account.lastName})`}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {account.alternativeEmail}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {new Date(account.createdAt).toLocaleString()}

@@ -45,7 +45,7 @@ export default function LogsPage() {
   const [actions, setActions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [action, setAction] = useState("");
+  const [action, setAction] = useState("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -55,7 +55,7 @@ export default function LogsPage() {
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
-      if (action) params.set("action", action);
+      if (action && action !== "all") params.set("action", action);
       params.set("page", page.toString());
 
       const res = await fetch(`/api/admin/logs?${params}`);
@@ -115,7 +115,7 @@ export default function LogsPage() {
                 <SelectValue placeholder="Filter by action" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Actions</SelectItem>
+                <SelectItem value="all">All Actions</SelectItem>
                 {actions.map((a) => (
                   <SelectItem key={a} value={a}>
                     {a.replace(/_/g, " ")}

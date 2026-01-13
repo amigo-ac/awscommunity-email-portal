@@ -20,17 +20,16 @@ import {
 
 type CommunityType = "cc" | "ug" | "cb" | "hero";
 
-interface RegistrationWizardProps {
-  userEmail: string;
-}
-
 const communityTypes = [
   {
     id: "cc" as const,
     name: "AWS Cloud Club",
     description: "For student-led technical communities",
     prefix: "cc.",
-    placeholder: "schoolname",
+    placeholder: "tecmonterrey",
+    nameLabel: "School/Club Name",
+    namePlaceholder: "Tec de Monterrey",
+    nameHelp: "Enter the name of your school or club",
     icon: GraduationCap,
   },
   {
@@ -38,7 +37,10 @@ const communityTypes = [
     name: "AWS User Group",
     description: "For local city-based user groups",
     prefix: "ug.",
-    placeholder: "cityname",
+    placeholder: "guadalajara",
+    nameLabel: "City/Group Name",
+    namePlaceholder: "Guadalajara",
+    nameHelp: "Enter the city or name of your user group",
     icon: Users,
   },
   {
@@ -46,7 +48,10 @@ const communityTypes = [
     name: "Community Builder",
     description: "For AWS Community Builders",
     prefix: "cb.",
-    placeholder: "flastname",
+    placeholder: "dvictoria",
+    nameLabel: "First Name",
+    namePlaceholder: "David",
+    nameHelp: "Enter your first name",
     icon: Award,
   },
   {
@@ -54,18 +59,29 @@ const communityTypes = [
     name: "AWS Hero",
     description: "For AWS Heroes",
     prefix: "hero.",
-    placeholder: "flastname",
+    placeholder: "dvictoria",
+    nameLabel: "First Name",
+    namePlaceholder: "David",
+    nameHelp: "Enter your first name",
     icon: Star,
   },
 ];
 
 const EMAIL_DOMAIN = "awscommunity.mx";
 
-export function RegistrationWizard({ userEmail }: RegistrationWizardProps) {
+export function RegistrationWizard() {
   const [step, setStep] = useState(1);
   const [selectedType, setSelectedType] = useState<CommunityType | null>(null);
   const [token, setToken] = useState("");
   const [username, setUsername] = useState("");
+
+  // New fields
+  const [firstName, setFirstName] = useState(""); // For CB/Hero: first name. For CC/UG: org name
+  const [lastName, setLastName] = useState(""); // Only for CB/Hero
+  const [contactName, setContactName] = useState(""); // Only for CC/UG
+  const [phone, setPhone] = useState("");
+  const [alternativeEmail, setAlternativeEmail] = useState("");
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [tokenValid, setTokenValid] = useState<boolean | null>(null);
@@ -77,6 +93,8 @@ export function RegistrationWizard({ userEmail }: RegistrationWizardProps) {
   const fullEmail = selectedTypeInfo
     ? `${selectedTypeInfo.prefix}${username}@${EMAIL_DOMAIN}`
     : "";
+
+  const isOrgType = selectedType === "cc" || selectedType === "ug";
 
   const validateToken = async () => {
     if (!selectedType || !token) return;
@@ -125,6 +143,15 @@ export function RegistrationWizard({ userEmail }: RegistrationWizardProps) {
     }
   };
 
+  const canProceedToStep4 = () => {
+    if (!username || usernameAvailable !== true) return false;
+    if (isOrgType) {
+      return firstName && contactName && alternativeEmail;
+    } else {
+      return firstName && lastName && alternativeEmail;
+    }
+  };
+
   const createEmail = async () => {
     if (!selectedType || !username || !tokenValid) return;
     setIsLoading(true);
@@ -137,6 +164,12 @@ export function RegistrationWizard({ userEmail }: RegistrationWizardProps) {
           type: selectedType,
           username,
           token,
+          firstName,
+          // For CC/UG: store contact person in lastName field
+          // For CB/Hero: store actual lastName
+          lastName: isOrgType ? contactName : lastName,
+          phone,
+          alternativeEmail,
         }),
       });
       const data = await res.json();
@@ -292,13 +325,13 @@ export function RegistrationWizard({ userEmail }: RegistrationWizardProps) {
         </Card>
       )}
 
-      {/* Step 3: Choose Username */}
+      {/* Step 3: Enter Details */}
       {step === 3 && (
         <Card>
           <CardHeader>
-            <CardTitle>Choose Your Username</CardTitle>
+            <CardTitle>Enter Your Details</CardTitle>
             <CardDescription>
-              Pick a username for your @{EMAIL_DOMAIN} email address.
+              Fill in your information to create your @{EMAIL_DOMAIN} email.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -314,8 +347,10 @@ export function RegistrationWizard({ userEmail }: RegistrationWizardProps) {
                   </>
                 )}
               </div>
+
+              {/* Username field */}
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">Email Username</Label>
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground font-mono">
                     {selectedTypeInfo?.prefix}
@@ -339,24 +374,114 @@ export function RegistrationWizard({ userEmail }: RegistrationWizardProps) {
                 <p className="text-sm text-muted-foreground">
                   Only lowercase letters and numbers are allowed.
                 </p>
+                {username && usernameAvailable === true && (
+                  <Badge variant="default" className="bg-green-500">
+                    <Check className="mr-1 h-3 w-3" />
+                    Available
+                  </Badge>
+                )}
+                {username && usernameAvailable === false && (
+                  <Badge variant="destructive">Not available</Badge>
+                )}
               </div>
+
+              {/* Conditional fields based on type */}
+              {isOrgType ? (
+                // CC/UG: Organization name + Contact person
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">{selectedTypeInfo?.nameLabel} *</Label>
+                    <Input
+                      id="firstName"
+                      placeholder={selectedTypeInfo?.namePlaceholder}
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      {selectedTypeInfo?.nameHelp}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contactName">Contact Person Name *</Label>
+                    <Input
+                      id="contactName"
+                      placeholder="Juan Pérez"
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Name of the main contact for this group
+                    </p>
+                  </div>
+                </>
+              ) : (
+                // CB/Hero: First name + Last name
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name *</Label>
+                      <Input
+                        id="firstName"
+                        placeholder="David"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name *</Label>
+                      <Input
+                        id="lastName"
+                        placeholder="Victoria"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Common fields */}
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+52 55 1234 5678"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="alternativeEmail">Alternative Email *</Label>
+                <Input
+                  id="alternativeEmail"
+                  type="email"
+                  placeholder="your.email@gmail.com"
+                  value={alternativeEmail}
+                  onChange={(e) => setAlternativeEmail(e.target.value)}
+                />
+                <p className="text-sm text-muted-foreground">
+                  We&apos;ll send your temporary password to this email
+                </p>
+              </div>
+
+              {/* Email preview */}
               {username && (
                 <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Preview:</p>
+                  <p className="text-sm text-muted-foreground mb-1">Email preview:</p>
                   <p className="font-mono font-medium">{fullEmail}</p>
-                  {usernameAvailable === true && (
-                    <Badge variant="default" className="mt-2 bg-green-500">
-                      <Check className="mr-1 h-3 w-3" />
-                      Available
-                    </Badge>
-                  )}
-                  {usernameAvailable === false && (
-                    <Badge variant="destructive" className="mt-2">
-                      Not available
-                    </Badge>
+                  {firstName && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Display name: {isOrgType
+                        ? `${selectedType === "cc" ? "AWS Cloud Club at" : "AWS User Group"} ${firstName} (México)`
+                        : `${firstName} ${lastName} (${selectedType === "hero" ? "AWS Hero" : "Community Builder"})`
+                      }
+                    </p>
                   )}
                 </div>
               )}
+
               {error && (
                 <div className="flex items-center gap-2 text-red-600 text-sm">
                   <AlertCircle className="h-4 w-4" />
@@ -371,7 +496,7 @@ export function RegistrationWizard({ userEmail }: RegistrationWizardProps) {
               </Button>
               <Button
                 onClick={createEmail}
-                disabled={!username || usernameAvailable !== true || isLoading}
+                disabled={!canProceedToStep4() || isLoading}
               >
                 {isLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -420,7 +545,7 @@ export function RegistrationWizard({ userEmail }: RegistrationWizardProps) {
               </ol>
             </div>
             <div className="text-center text-sm text-muted-foreground">
-              <p>A confirmation email has been sent to <strong>{userEmail}</strong></p>
+              <p>A confirmation email has been sent to <strong>{alternativeEmail}</strong></p>
             </div>
           </CardContent>
         </Card>
