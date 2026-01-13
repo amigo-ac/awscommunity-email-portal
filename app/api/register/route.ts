@@ -1,0 +1,159 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db, tokens, accounts, auditLogs, emailPrefixes, communityTypes, type CommunityType } from "@/lib/db";
+import { eq } from "drizzle-orm";
+import bcrypt from "bcryptjs";
+import {
+  createGoogleWorkspaceUser,
+  checkGoogleWorkspaceUserExists,
+  sendConfirmationEmail,
+  addUserToGroup,
+  getGroupEmail,
+} from "@/lib/google-admin";
+
+const EMAIL_DOMAIN = process.env.EMAIL_DOMAIN || "awscommunity.mx";
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { type, username, token } = body;
+    const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip");
+
+    // Validate input
+    if (!type || !username || !token) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (!communityTypes.includes(type)) {
+      return NextResponse.json({ error: "Invalid community type" }, { status: 400 });
+    }
+
+    // Validate username format
+    if (!/^[a-z0-9]+$/.test(username) || username.length < 2) {
+      return NextResponse.json({ error: "Invalid username format" }, { status: 400 });
+    }
+
+    // Verify token again
+    const storedToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.type, type))
+      .limit(1);
+
+    if (!storedToken.length) {
+      await db.insert(auditLogs).values({
+        action: "registration_failed",
+        actorEmail: session.user.email,
+        details: { type, username, reason: "no_token_configured" },
+        ipAddress,
+      });
+      return NextResponse.json({ error: "Invalid token" }, { status: 400 });
+    }
+
+    const isTokenValid = await bcrypt.compare(token, storedToken[0].tokenHash);
+    if (!isTokenValid) {
+      await db.insert(auditLogs).values({
+        action: "registration_failed",
+        actorEmail: session.user.email,
+        details: { type, username, reason: "invalid_token" },
+        ipAddress,
+      });
+      return NextResponse.json({ error: "Invalid token" }, { status: 400 });
+    }
+
+    // Build full email
+    const prefix = emailPrefixes[type as CommunityType];
+    const fullEmail = `${prefix}${username}@${EMAIL_DOMAIN}`;
+
+    // Check if email already exists in our database
+    const existingAccount = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.email, fullEmail))
+      .limit(1);
+
+    if (existingAccount.length > 0) {
+      await db.insert(auditLogs).values({
+        action: "registration_failed",
+        actorEmail: session.user.email,
+        details: { type, username, fullEmail, reason: "email_exists_in_db" },
+        ipAddress,
+      });
+      return NextResponse.json({ error: "Email already exists" }, { status: 400 });
+    }
+
+    // Check if user exists in Google Workspace
+    const existsInWorkspace = await checkGoogleWorkspaceUserExists(fullEmail);
+    if (existsInWorkspace) {
+      await db.insert(auditLogs).values({
+        action: "registration_failed",
+        actorEmail: session.user.email,
+        details: { type, username, fullEmail, reason: "email_exists_in_workspace" },
+        ipAddress,
+      });
+      return NextResponse.json({ error: "Email already exists in workspace" }, { status: 400 });
+    }
+
+    // Create user in Google Workspace
+    // Use username as both first and last name (user can update in Google settings)
+    const result = await createGoogleWorkspaceUser(
+      fullEmail,
+      username, // firstName
+      type.toUpperCase() // lastName (e.g., "CC", "UG", "CB", "HERO")
+    );
+
+    if (!result.success) {
+      await db.insert(auditLogs).values({
+        action: "registration_failed",
+        actorEmail: session.user.email,
+        details: { type, username, fullEmail, reason: "workspace_creation_failed", error: result.error },
+        ipAddress,
+      });
+      return NextResponse.json({ error: result.error || "Failed to create email" }, { status: 500 });
+    }
+
+    // Add user to the corresponding community group
+    const groupEmail = getGroupEmail(type);
+    let addedToGroup = false;
+    if (groupEmail) {
+      const groupResult = await addUserToGroup(fullEmail, groupEmail);
+      addedToGroup = groupResult.success;
+      if (!groupResult.success) {
+        console.error(`Failed to add ${fullEmail} to group ${groupEmail}`);
+      }
+    }
+
+    // Save to our database
+    await db.insert(accounts).values({
+      email: fullEmail,
+      type,
+      username,
+      creatorGmail: session.user.email,
+    });
+
+    // Log success
+    await db.insert(auditLogs).values({
+      action: "registration_success",
+      actorEmail: session.user.email,
+      details: { type, username, fullEmail, addedToGroup, groupEmail },
+      ipAddress,
+    });
+
+    // Send confirmation email (don't fail if this fails)
+    await sendConfirmationEmail(session.user.email, fullEmail, result.tempPassword!);
+
+    return NextResponse.json({
+      success: true,
+      email: fullEmail,
+      tempPassword: result.tempPassword,
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
