@@ -2,6 +2,8 @@ import { db, accounts, auditLogs, tokens } from "@/lib/db";
 import { Key, Users, FileText, Clock, TrendingUp } from "lucide-react";
 import { desc, sql } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboard() {
   // Get stats
   const [accountStats] = await db
