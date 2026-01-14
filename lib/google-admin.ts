@@ -257,10 +257,16 @@ export async function uploadGoogleWorkspaceUserPhoto(
       },
     });
 
+    // Small delay to let Google process the photo
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     // Retrieve the photo back from Google to get the processed version
     const photoResponse = await admin.users.photos.get({ userKey: email });
     if (photoResponse.data?.photoData) {
-      const photoData = `data:${photoResponse.data.mimeType || "image/jpeg"};base64,${photoResponse.data.photoData}`;
+      // Convert web-safe base64 to standard base64
+      const webSafeBase64 = photoResponse.data.photoData;
+      const standardBase64 = webSafeBase64.replace(/-/g, '+').replace(/_/g, '/');
+      const photoData = `data:${photoResponse.data.mimeType || "image/jpeg"};base64,${standardBase64}`;
       return { success: true, photoData };
     }
 
@@ -289,8 +295,10 @@ export async function getGoogleWorkspaceUserPhoto(
     const response = await admin.users.photos.get({ userKey: email });
 
     if (response.data && response.data.photoData) {
-      // Return the photo as a data URL
-      const photoUrl = `data:${response.data.mimeType || "image/jpeg"};base64,${response.data.photoData}`;
+      // Convert web-safe base64 to standard base64
+      const webSafeBase64 = response.data.photoData;
+      const standardBase64 = webSafeBase64.replace(/-/g, '+').replace(/_/g, '/');
+      const photoUrl = `data:${response.data.mimeType || "image/jpeg"};base64,${standardBase64}`;
       return { success: true, photoUrl };
     }
 
