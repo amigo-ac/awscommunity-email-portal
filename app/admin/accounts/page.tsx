@@ -32,6 +32,8 @@ import {
   Phone,
   Calendar,
   User,
+  RefreshCw,
+  Check,
 } from "lucide-react";
 
 interface Account {
@@ -94,6 +96,11 @@ export default function AccountsPage() {
   // View modal state
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [accountToView, setAccountToView] = useState<Account | null>(null);
+
+  // Sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncSuccess, setSyncSuccess] = useState(false);
+  const [syncError, setSyncError] = useState("");
 
   const fetchAccounts = async () => {
     setLoading(true);
@@ -167,6 +174,50 @@ export default function AccountsPage() {
     setDeleteModalOpen(false);
     setAccountToDelete(null);
     setDeleteError("");
+  };
+
+  const handleSyncImage = async () => {
+    if (!accountToView) return;
+
+    setIsSyncing(true);
+    setSyncSuccess(false);
+    setSyncError("");
+
+    try {
+      const res = await fetch("/api/admin/accounts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountId: accountToView.id,
+          email: accountToView.email,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setSyncSuccess(true);
+        // Update the account in the view modal
+        setAccountToView({
+          ...accountToView,
+          profileImage: data.profileImage,
+        });
+        // Update the accounts list
+        setAccounts(accounts.map(acc =>
+          acc.id === accountToView.id
+            ? { ...acc, profileImage: data.profileImage }
+            : acc
+        ));
+        // Reset success after 3 seconds
+        setTimeout(() => setSyncSuccess(false), 3000);
+      } else {
+        setSyncError(data.error || "Failed to sync image");
+      }
+    } catch {
+      setSyncError("Failed to sync image. Please try again.");
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   return (
@@ -414,7 +465,7 @@ export default function AccountsPage() {
               {/* Profile Header */}
               <div className="flex items-start gap-4">
                 {/* Profile Image */}
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 relative">
                   {accountToView.profileImage ? (
                     <img
                       src={accountToView.profileImage}
@@ -426,6 +477,21 @@ export default function AccountsPage() {
                       <User className="w-10 h-10 text-[#484f58]" />
                     </div>
                   )}
+                  {/* Sync button */}
+                  <button
+                    onClick={handleSyncImage}
+                    disabled={isSyncing}
+                    className="absolute -bottom-1 -right-1 p-1.5 bg-[#21262d] border border-[#30363d] rounded-full text-[#7d8590] hover:text-purple-400 hover:border-purple-400 transition-colors disabled:opacity-50"
+                    title="Sync image from Google Workspace"
+                  >
+                    {isSyncing ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : syncSuccess ? (
+                      <Check className="w-4 h-4 text-green-400" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
 
                 {/* Basic Info */}
@@ -442,6 +508,13 @@ export default function AccountsPage() {
                   </span>
                 </div>
               </div>
+
+              {/* Sync Error */}
+              {syncError && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-md p-3">
+                  <p className="text-sm text-red-400">{syncError}</p>
+                </div>
+              )}
 
               {/* Bio */}
               {accountToView.bio && (

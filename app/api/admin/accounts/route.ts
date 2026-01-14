@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, isAdmin } from "@/lib/auth";
 import { db, accounts, auditLogs } from "@/lib/db";
 import { desc, like, eq, or, sql } from "drizzle-orm";
-import { deleteGoogleWorkspaceUser } from "@/lib/google-admin";
+import { deleteGoogleWorkspaceUser, getGoogleWorkspaceUserPhoto } from "@/lib/google-admin";
 
 export async function GET(request: NextRequest) {
   try {
@@ -130,6 +130,72 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting account:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+// PATCH - Sync profile image from Google Workspace
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.email || !isAdmin(session.user.email)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { accountId, email } = body;
+
+    if (!accountId || !email) {
+      return NextResponse.json({ error: "Account ID and email are required" }, { status: 400 });
+    }
+
+    const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip");
+
+    // Verify account exists in local database
+    const existingAccount = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.id, accountId))
+      .limit(1);
+
+    if (existingAccount.length === 0) {
+      return NextResponse.json({ error: "Account not found" }, { status: 404 });
+    }
+
+    // Fetch profile image from Google Workspace
+    const photoResult = await getGoogleWorkspaceUserPhoto(email);
+
+    if (!photoResult.success || !photoResult.photoUrl) {
+      return NextResponse.json(
+        { error: photoResult.error || "No profile image found in Google Workspace" },
+        { status: 404 }
+      );
+    }
+
+    // Update the profile image in the database
+    await db
+      .update(accounts)
+      .set({ profileImage: photoResult.photoUrl })
+      .where(eq(accounts.id, accountId));
+
+    // Log the sync action
+    await db.insert(auditLogs).values({
+      action: "profile_image_synced",
+      actorEmail: session.user.email,
+      details: {
+        accountId,
+        email,
+        syncedFrom: "google_workspace",
+      },
+      ipAddress,
+    });
+
+    return NextResponse.json({
+      success: true,
+      profileImage: photoResult.photoUrl,
+    });
+  } catch (error) {
+    console.error("Error syncing profile image:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
