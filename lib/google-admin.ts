@@ -151,11 +151,10 @@ export async function createGoogleWorkspaceUser(
   lastName: string,
   orgUnitPath?: string
 ): Promise<{ success: boolean; tempPassword?: string; error?: string }> {
-  try {
-    const admin = await getAdminClient();
-    const tempPassword = generateTempPassword();
+  const admin = await getAdminClient();
+  const tempPassword = generateTempPassword();
 
-    // Create the user
+  const createUser = async (ouPath: string) => {
     await admin.users.insert({
       requestBody: {
         primaryEmail: email,
@@ -165,10 +164,14 @@ export async function createGoogleWorkspaceUser(
         },
         password: tempPassword,
         changePasswordAtNextLogin: true,
-        orgUnitPath: orgUnitPath || "/",
+        orgUnitPath: ouPath,
       },
     });
+  };
 
+  try {
+    // Try to create user with specified OU
+    await createUser(orgUnitPath || "/");
     return { success: true, tempPassword };
   } catch (error: unknown) {
     console.error("Error creating Google Workspace user:", error);
@@ -176,8 +179,20 @@ export async function createGoogleWorkspaceUser(
     // Handle specific Google API errors
     if (error && typeof error === 'object' && 'code' in error) {
       const googleError = error as { code: number; message?: string };
+
       if (googleError.code === 409) {
         return { success: false, error: "User already exists in Google Workspace" };
+      }
+
+      // If OU is invalid and we specified one, retry with root OU
+      if (googleError.code === 400 && orgUnitPath && orgUnitPath !== "/") {
+        console.warn(`Invalid OU path "${orgUnitPath}", retrying with root OU`);
+        try {
+          await createUser("/");
+          return { success: true, tempPassword };
+        } catch (retryError) {
+          console.error("Error creating user with root OU:", retryError);
+        }
       }
     }
 
