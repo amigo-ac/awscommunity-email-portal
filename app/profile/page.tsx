@@ -41,7 +41,7 @@ interface Profile {
   location: string | null;
   company: string | null;
   jobTitle: string | null;
-  profileImageUrl: string | null;
+  profileImage: string | null;
   linkedin: string | null;
   twitter: string | null;
   github: string | null;
@@ -108,7 +108,7 @@ export default function ProfilePage() {
           setFacebook(data.profile.facebook || "");
           setYoutube(data.profile.youtube || "");
           setWebsite(data.profile.website || "");
-          setProfileImagePreview(data.profile.profileImageUrl);
+          setProfileImagePreview(data.profile.profileImage);
         }
       } catch (err) {
         setError("Failed to load profile");

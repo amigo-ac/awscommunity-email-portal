@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, accounts, emailPrefixes, communityTypes, type CommunityType } from "@/lib/db";
 import { eq } from "drizzle-orm";
+import { usernameCheckRateLimit, getClientIP, checkRateLimit } from "@/lib/rate-limit";
 
 const EMAIL_DOMAIN = process.env.EMAIL_DOMAIN || "awscommunity.mx";
 
 export async function POST(request: NextRequest) {
   try {
+    // Check rate limit by IP
+    const clientIP = getClientIP(request);
+    const rateLimitResult = await checkRateLimit(usernameCheckRateLimit, clientIP);
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: "Too many requests. Please slow down." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { type, username } = body;
 

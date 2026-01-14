@@ -66,16 +66,18 @@ export async function PUT(request: NextRequest) {
     } = body;
 
     // Upload profile image to Google Workspace if provided and changed
-    let profileImageUrl = existingAccount[0].profileImageUrl;
-    if (profileImage && profileImage !== existingAccount[0].profileImageUrl) {
+    let newProfileImage = existingAccount[0].profileImage;
+    if (profileImage && profileImage !== existingAccount[0].profileImage) {
+      // Upload to Google Workspace and get processed version back
       const photoResult = await uploadGoogleWorkspaceUserPhoto(
         session.user.email,
         profileImage
       );
-      if (photoResult.success && photoResult.photoUrl) {
-        profileImageUrl = photoResult.photoUrl;
+      if (photoResult.success && photoResult.photoData) {
+        newProfileImage = photoResult.photoData; // Store Google's processed version
       } else {
-        console.error(`Failed to upload profile photo for ${session.user.email}`);
+        console.error(`Failed to upload profile photo to Google Workspace for ${session.user.email}`);
+        newProfileImage = profileImage; // Fallback to original
       }
     }
 
@@ -87,7 +89,7 @@ export async function PUT(request: NextRequest) {
         location: location ?? existingAccount[0].location,
         company: company ?? existingAccount[0].company,
         jobTitle: jobTitle ?? existingAccount[0].jobTitle,
-        profileImageUrl,
+        profileImage: newProfileImage,
         linkedin: linkedin ?? existingAccount[0].linkedin,
         twitter: twitter ?? existingAccount[0].twitter,
         github: github ?? existingAccount[0].github,

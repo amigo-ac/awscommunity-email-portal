@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -10,7 +9,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Loader2, ChevronLeft, ChevronRight, Users, Trash2, AlertTriangle } from "lucide-react";
+import {
+  Search,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  Trash2,
+  AlertTriangle,
+  Eye,
+  X,
+  MapPin,
+  Building,
+  Briefcase,
+  Linkedin,
+  Github,
+  Instagram,
+  Facebook,
+  Youtube,
+  Globe,
+  Mail,
+  Phone,
+  Calendar,
+  User,
+} from "lucide-react";
 
 interface Account {
   id: number;
@@ -23,6 +45,20 @@ interface Account {
   alternativeEmail: string;
   googleDisplayName: string | null;
   createdAt: string;
+  // Profile fields
+  bio: string | null;
+  location: string | null;
+  profileImage: string | null;
+  company: string | null;
+  jobTitle: string | null;
+  // Social networks
+  linkedin: string | null;
+  twitter: string | null;
+  github: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  youtube: string | null;
+  website: string | null;
 }
 
 const communityTypes = [
@@ -54,6 +90,10 @@ export default function AccountsPage() {
   const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+
+  // View modal state
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [accountToView, setAccountToView] = useState<Account | null>(null);
 
   const fetchAccounts = async () => {
     setLoading(true);
@@ -195,6 +235,7 @@ export default function AccountsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#30363d] bg-[#0d1117]">
+                  <th className="text-left p-4 text-sm font-medium text-[#7d8590] w-12"></th>
                   <th className="text-left p-4 text-sm font-medium text-[#7d8590]">Email</th>
                   <th className="text-left p-4 text-sm font-medium text-[#7d8590]">Type</th>
                   <th className="text-left p-4 text-sm font-medium text-[#7d8590]">Name</th>
@@ -211,6 +252,19 @@ export default function AccountsPage() {
                       key={account.id}
                       className="border-b border-[#21262d] hover:bg-[#21262d] transition-colors"
                     >
+                      <td className="p-4">
+                        {account.profileImage ? (
+                          <img
+                            src={account.profileImage}
+                            alt=""
+                            className="w-8 h-8 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-[#21262d] flex items-center justify-center">
+                            <User className="w-4 h-4 text-[#484f58]" />
+                          </div>
+                        )}
+                      </td>
                       <td className="p-4 font-mono text-sm text-[#e6edf3]">{account.email}</td>
                       <td className="p-4">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${colors.bg} ${colors.text}`}>
@@ -225,13 +279,25 @@ export default function AccountsPage() {
                         {new Date(account.createdAt).toLocaleString()}
                       </td>
                       <td className="p-4">
-                        <button
-                          onClick={() => openDeleteModal(account)}
-                          className="p-2 text-[#7d8590] hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
-                          title="Delete account"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => {
+                              setAccountToView(account);
+                              setViewModalOpen(true);
+                            }}
+                            className="p-2 text-[#7d8590] hover:text-purple-400 hover:bg-purple-500/10 rounded-md transition-colors"
+                            title="View profile"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => openDeleteModal(account)}
+                            className="p-2 text-[#7d8590] hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
+                            title="Delete account"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -321,6 +387,207 @@ export default function AccountsPage() {
                 {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
                 Delete Account
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Profile Modal */}
+      {viewModalOpen && accountToView && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-[#30363d] sticky top-0 bg-[#161b22]">
+              <h3 className="text-lg font-medium text-[#e6edf3]">Profile Details</h3>
+              <button
+                onClick={() => {
+                  setViewModalOpen(false);
+                  setAccountToView(null);
+                }}
+                className="p-2 text-[#7d8590] hover:text-[#e6edf3] hover:bg-[#21262d] rounded-md transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Profile Header */}
+              <div className="flex items-start gap-4">
+                {/* Profile Image */}
+                <div className="flex-shrink-0">
+                  {accountToView.profileImage ? (
+                    <img
+                      src={accountToView.profileImage}
+                      alt={`${accountToView.firstName}'s profile`}
+                      className="w-24 h-24 rounded-full object-cover border-2 border-[#30363d]"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-[#21262d] border-2 border-[#30363d] flex items-center justify-center">
+                      <User className="w-10 h-10 text-[#484f58]" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Basic Info */}
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-xl font-medium text-[#e6edf3]">
+                    {accountToView.firstName} {accountToView.lastName}
+                  </h4>
+                  {accountToView.googleDisplayName && (
+                    <p className="text-sm text-[#7d8590] mt-0.5">{accountToView.googleDisplayName}</p>
+                  )}
+                  <p className="font-mono text-sm text-purple-400 mt-1">{accountToView.email}</p>
+                  <span className={`inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium ${typeColors[accountToView.type]?.bg || "bg-gray-500/20"} ${typeColors[accountToView.type]?.text || "text-gray-400"}`}>
+                    {accountToView.type.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Bio */}
+              {accountToView.bio && (
+                <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+                  <p className="text-[#e6edf3] text-sm whitespace-pre-wrap">{accountToView.bio}</p>
+                </div>
+              )}
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Contact Info */}
+                <div className="space-y-3">
+                  <h5 className="text-sm font-medium text-[#7d8590] uppercase tracking-wide">Contact</h5>
+
+                  <div className="flex items-center gap-3 text-sm">
+                    <Mail className="w-4 h-4 text-[#484f58]" />
+                    <span className="text-[#e6edf3]">{accountToView.alternativeEmail}</span>
+                  </div>
+
+                  {accountToView.phone && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <Phone className="w-4 h-4 text-[#484f58]" />
+                      <span className="text-[#e6edf3]">{accountToView.phone}</span>
+                    </div>
+                  )}
+
+                  {accountToView.location && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <MapPin className="w-4 h-4 text-[#484f58]" />
+                      <span className="text-[#e6edf3]">{accountToView.location}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 text-sm">
+                    <Calendar className="w-4 h-4 text-[#484f58]" />
+                    <span className="text-[#7d8590]">Joined {new Date(accountToView.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+
+                {/* Professional Info */}
+                {(accountToView.company || accountToView.jobTitle) && (
+                  <div className="space-y-3">
+                    <h5 className="text-sm font-medium text-[#7d8590] uppercase tracking-wide">Professional</h5>
+
+                    {accountToView.company && (
+                      <div className="flex items-center gap-3 text-sm">
+                        <Building className="w-4 h-4 text-[#484f58]" />
+                        <span className="text-[#e6edf3]">{accountToView.company}</span>
+                      </div>
+                    )}
+
+                    {accountToView.jobTitle && (
+                      <div className="flex items-center gap-3 text-sm">
+                        <Briefcase className="w-4 h-4 text-[#484f58]" />
+                        <span className="text-[#e6edf3]">{accountToView.jobTitle}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Social Networks */}
+              {(accountToView.linkedin || accountToView.twitter || accountToView.github || accountToView.instagram || accountToView.facebook || accountToView.youtube || accountToView.website) && (
+                <div className="space-y-3">
+                  <h5 className="text-sm font-medium text-[#7d8590] uppercase tracking-wide">Social Networks</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {accountToView.linkedin && (
+                      <a
+                        href={accountToView.linkedin}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] hover:border-[#0077b5] hover:text-[#0077b5] transition-colors"
+                      >
+                        <Linkedin className="w-4 h-4" />
+                        LinkedIn
+                      </a>
+                    )}
+                    {accountToView.twitter && (
+                      <a
+                        href={accountToView.twitter}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] hover:border-[#1da1f2] hover:text-[#1da1f2] transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                        Twitter/X
+                      </a>
+                    )}
+                    {accountToView.github && (
+                      <a
+                        href={accountToView.github}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] hover:border-[#e6edf3] transition-colors"
+                      >
+                        <Github className="w-4 h-4" />
+                        GitHub
+                      </a>
+                    )}
+                    {accountToView.instagram && (
+                      <a
+                        href={accountToView.instagram}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] hover:border-[#e4405f] hover:text-[#e4405f] transition-colors"
+                      >
+                        <Instagram className="w-4 h-4" />
+                        Instagram
+                      </a>
+                    )}
+                    {accountToView.facebook && (
+                      <a
+                        href={accountToView.facebook}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] hover:border-[#1877f2] hover:text-[#1877f2] transition-colors"
+                      >
+                        <Facebook className="w-4 h-4" />
+                        Facebook
+                      </a>
+                    )}
+                    {accountToView.youtube && (
+                      <a
+                        href={accountToView.youtube}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] hover:border-[#ff0000] hover:text-[#ff0000] transition-colors"
+                      >
+                        <Youtube className="w-4 h-4" />
+                        YouTube
+                      </a>
+                    )}
+                    {accountToView.website && (
+                      <a
+                        href={accountToView.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] hover:border-purple-400 hover:text-purple-400 transition-colors"
+                      >
+                        <Globe className="w-4 h-4" />
+                        Website
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

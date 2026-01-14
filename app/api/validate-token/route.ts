@@ -2,9 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, tokens, auditLogs, communityTypes } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { tokenValidationRateLimit, getClientIP, checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    // Check rate limit by IP
+    const clientIP = getClientIP(request);
+    const rateLimitResult = await checkRateLimit(tokenValidationRateLimit, clientIP);
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { type, token } = body;
     const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip");

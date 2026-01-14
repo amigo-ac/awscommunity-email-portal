@@ -239,7 +239,7 @@ export async function deleteGoogleWorkspaceUser(
 export async function uploadGoogleWorkspaceUserPhoto(
   email: string,
   imageBase64: string
-): Promise<{ success: boolean; photoUrl?: string; error?: string }> {
+): Promise<{ success: boolean; photoData?: string; error?: string }> {
   try {
     const admin = await getAdminClient();
 
@@ -248,7 +248,7 @@ export async function uploadGoogleWorkspaceUserPhoto(
       ? imageBase64.split(",")[1]
       : imageBase64;
 
-    // Upload the photo
+    // Upload the photo to Google Workspace
     await admin.users.photos.update({
       userKey: email,
       requestBody: {
@@ -257,10 +257,15 @@ export async function uploadGoogleWorkspaceUserPhoto(
       },
     });
 
-    // The photo URL follows a predictable pattern in Google Workspace
-    const photoUrl = `https://www.google.com/a/awscommunity.mx/photo.gif?uid=${email}`;
+    // Retrieve the photo back from Google to get the processed version
+    const photoResponse = await admin.users.photos.get({ userKey: email });
+    if (photoResponse.data?.photoData) {
+      const photoData = `data:${photoResponse.data.mimeType || "image/jpeg"};base64,${photoResponse.data.photoData}`;
+      return { success: true, photoData };
+    }
 
-    return { success: true, photoUrl };
+    // If we can't retrieve, return success but use original image
+    return { success: true, photoData: imageBase64 };
   } catch (error: unknown) {
     console.error("Error uploading Google Workspace user photo:", error);
 

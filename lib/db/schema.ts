@@ -50,7 +50,7 @@ export const accounts = pgTable("accounts", {
   // Profile Info
   bio: text("bio"),
   location: varchar("location", { length: 100 }),
-  profileImageUrl: varchar("profile_image_url", { length: 500 }),
+  profileImage: text("profile_image"), // Base64 encoded image data
 
   // Professional Info (CB/Hero only)
   company: varchar("company", { length: 100 }),

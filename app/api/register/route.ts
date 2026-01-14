@@ -12,11 +12,33 @@ import {
   getOrganizationalUnit,
   uploadGoogleWorkspaceUserPhoto,
 } from "@/lib/google-admin";
+import { registrationRateLimit, getClientIP, checkRateLimit } from "@/lib/rate-limit";
 
 const EMAIL_DOMAIN = process.env.EMAIL_DOMAIN || "awscommunity.mx";
 
 export async function POST(request: NextRequest) {
   try {
+    // Check rate limit by IP
+    const clientIP = getClientIP(request);
+    const rateLimitResult = await checkRateLimit(registrationRateLimit, clientIP);
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        {
+          error: "Too many registration attempts. Please try again later.",
+          retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000),
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": rateLimitResult.limit.toString(),
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+            "X-RateLimit-Reset": rateLimitResult.reset.toString(),
+          },
+        }
+      );
+    }
+
     const body = await request.json();
     const {
       type,
@@ -162,14 +184,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Upload profile image to Google Workspace if provided
-    let profileImageUrl: string | null = null;
+    // Upload profile image to Google Workspace and get the processed version back
+    let storedProfileImage: string | null = null;
     if (profileImage) {
       const photoResult = await uploadGoogleWorkspaceUserPhoto(fullEmail, profileImage);
-      if (photoResult.success && photoResult.photoUrl) {
-        profileImageUrl = photoResult.photoUrl;
+      if (photoResult.success && photoResult.photoData) {
+        storedProfileImage = photoResult.photoData; // Store Google's processed version
       } else {
-        console.error(`Failed to upload profile photo for ${fullEmail}`);
+        console.error(`Failed to upload profile photo to Google Workspace for ${fullEmail}`);
+        storedProfileImage = profileImage; // Fallback to original
       }
     }
 
@@ -188,7 +211,7 @@ export async function POST(request: NextRequest) {
       location: location || null,
       company: company || null,
       jobTitle: jobTitle || null,
-      profileImageUrl,
+      profileImage: storedProfileImage, // Store synced from Google
       // Social networks
       linkedin: linkedin || null,
       twitter: twitter || null,
